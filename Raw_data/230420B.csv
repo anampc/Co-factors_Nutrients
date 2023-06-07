@@ -1,0 +1,57 @@
+﻿ANAL,Other Analyses.ANL,
+RUN ,230420B.RUN,
+DATE,4/20/2023,
+TIME,10:50:28 AM,
+OPER,TC,
+COMM,Pilot Data Ana,
+TYPE,,Real
+CHAN,,5
+METH,,NH4
+UNIT,,µmol/L
+Base,,-6079
+Gain,,58
+FIT,,S
+COEFF,,0.9998
+Sample ID,,Results 5
+Ana-043,,6.3
+Ana-044,,5.07
+Ana-045,,0.62
+Ana-046,,1.21
+Ana-047,,4.2
+Ana-048,,4.28
+Ana-049,,0.26
+Ana-050,,0.38
+Ana-051,,2.5
+Ana-052,,2.27
+Ana-053,,1.25
+Ana-054,,0.71
+Ana-055,,3.74
+Ana-056,,3.65
+Ana-057,,0.36
+Ana-058,,0.24
+Ana-059,,4.06
+Ana-060,,3.75
+Ana-061,,0
+Ana-062,,0.27
+Ana-063,,4.5
+Ana-064,,4.36
+Ana-065,,1.11
+Ana-066,,0.64
+Ana-067,,1.94
+Ana-068,,1.26
+Ana-069,,0.41
+Ana-070,,0.38
+Ana-071,,3.08
+Ana-072,,1.83
+Ana-073,,0.43
+Ana-074,,0.38
+Ana-075,,4.39
+Ana-076,,4.17
+Ana-077,,0.33
+Ana-078,,0.37
+Ana-079,,4.03
+Ana-080,,3.82
+Ana-081,,0.44
+Ana-082,,0.42
+Ana-083,,3.42
+Ana-084,,3.59

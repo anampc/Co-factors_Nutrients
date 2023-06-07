@@ -1,0 +1,704 @@
+---
+title: "Nutrients overtime"
+author: "Ana M. Palacio"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+      toc: true
+      df_print: paged
+      theme: united
+      code_folding: hide
+bibliography: packages.bib
+nocite: '@*'
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+# General project set-up 
+
+```{r libraries, results="hide"}
+
+# Load all libraries and sources required to run the script
+    library(tidyverse)
+    library(ggthemes)
+    library(ggplot2)
+    library(plyr)
+    library(tidyr)
+
+    library(lme4)
+    library(lmerTest)
+    library(reshape2)
+
+# Graphs
+# Plots
+MyTheme<-theme_bw() +  
+theme(legend.position="top",
+          plot.background=element_blank(),
+          #axis.text.x = element_text(angle = 90, vjust = 0.5),
+          panel.grid.major.y = element_blank(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          legend.box.background = element_rect(),
+          legend.title = element_blank(),
+          panel.background =element_rect(fill = NA, 
+                                         color = "black"))#+
+  #guides(fill=guide_legend(nrow=2,byrow=TRUE), shape=guide_legend(nrow=3,byrow=TRUE))
+
+Treat_fill<-scale_fill_manual(values =
+                           c("#2b83ba", "#003399",
+                             "#d7191c", "#660000"))
+
+Treat_colour<-scale_colour_manual(values =
+                           c("#2b83ba", "#003399",
+                             "#d7191c", "#660000"))
+  
+```
+
+# 1. Temperature
+
+```{r}
+# Data
+    Temp<-read.csv("Data/Temperature.csv", header = TRUE)
+    summary(Temp)
+    Temp$Time<-as.POSIXct(Temp$Time, format="%m/%d/%Y %H:%M",
+                               tz = "America/New_York" )
+    
+    Temp <- gather(Temp, Tank, Temperature, 
+                   Tank.1:Tank.8, factor_key=TRUE)
+    #Temp<-Temp[Temp$Tank!="Tank.6",]
+    #Temp<-Temp[Temp$Tank!="Tank.7",]
+    Temp<-Temp %>% mutate(Group =
+                     case_when(Tank == "Tank.1" ~ "Control Temp", 
+                               Tank == "Tank.2" ~ "High Temp", 
+                               Tank == "Tank.3" ~ "High Temp", 
+                               Tank == "Tank.4" ~ "Control Temp",
+                               Tank == "Tank.5" ~ "Control Temp", 
+                               Tank == "Tank.6" ~ "Donor colony", 
+                               Tank == "Tank.7" ~ "Donor colony", 
+                               Tank == "Tank.8" ~ "High Temp",))
+    Temp<-Temp[Temp$Temperature>27.5,]
+    summary(Temp)
+```
+
+## Plot tanks
+
+```{r}
+Temperature<- ggplot(Temp, aes (Time, Temperature)) +
+  geom_jitter(aes(colour=Group), alpha=1, size=0.5)+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #              geom = "errorbar", width = 0.2,  color="black" )+
+  # stat_summary(fun=mean, geom="point",  color="black") + 
+
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(26, 32),
+                      breaks = seq(0,32, 2),  
+                      #   expand = c(0.01, 0.01),
+                      name=("Temperature (C)")) +
+  
+    scale_x_datetime(breaks = "5 days",
+                      date_labels = "%b %d",
+                      limits = c(as.POSIXct("2023-05-02 12:30"),
+                                 as.POSIXct("2023-05-18 02:00")),
+                      #  expand = c(0.01, 0.01),
+                      name=("Date")) +
+  # geom_vline(xintercept = as.POSIXct("2023-05-18"),
+  #            linetype=3)+
+   # geom_vline(xintercept = as.POSIXct("2023-05-13"),
+   #           linetype=3)+
+  ggthe_bw + facet_wrap(~Tank, ncol = 4)+
+  #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
+  scale_colour_manual(
+  values = c("#2b83ba",  "gray", "#d7191c"))+
+  theme(legend.position = "none")
+
+Temperature
+```
+
+
+# 2. Nutrients
+
+```{r}
+# Data
+    data<-read.csv("Data/Samples.csv", header = TRUE)
+    data<-data[data$Sample.ID<833,]
+    summary(data)
+    
+    data$Date<-as.Date(data$Date)
+    #data$Time<-as.POSIXct(data$Time)
+    data$TimePoint<-factor(data$TP)
+    data$Target<-factor(data$Target,
+                           levels=c("0", "5", "6"))
+    # data$Pump<-factor(data$Pump,
+    #                        levels=c("1", "2"))
+    
+    data<-droplevels(data)
+    data$Treatment<-factor(data$Treatment, levels = c ("LN_28", "LN_31", "HN_28", "HN_31", "Healthy", "Disease",  "Stock", "VAT"))
+
+    summary(data)
+```
+
+
+
+# 2. Exploratory plots
+
+## Plot tanks
+
+```{r}
+NH4<- ggplot(data, aes (Target, NH4.concentration..uM.)) +
+  #geom_boxplot ()+
+  geom_jitter(aes(colour=Arm, shape=Pump), alpha=1)+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #              geom = "errorbar", width = 0.2,  color="black" )+
+  # stat_summary(fun=mean, geom="point",  color="black") + 
+  #geom_point(shape=21)+
+
+ 
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(0, 11),
+                      breaks = seq(0,12, 2.5),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  ggthe_bw +
+  facet_grid(Beaker.conditions~TimePoint, scales = "free_y")
+
+NH4
+```
+
+
+```{r}
+NH4<- ggplot(data, aes (TimePoint, NH4.concentration..uM.)) +
+  geom_boxplot ()+
+  geom_jitter(aes(colour=Genotype, shape=Arm), alpha=1)+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #              geom = "errorbar", width = 0.2,  color="black" )+
+  # stat_summary(fun=mean, geom="point",  color="black") + 
+  #geom_point(shape=21)+
+
+ 
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(0, 7),
+                      breaks = seq(0,6, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  ggthe_bw +
+  facet_wrap(~Nutrients, scales = "free_y")
+
+NH4
+```
+
+
+```{r}
+NH4_Arms<- ggplot(data, aes (TimePoint, NH4.concentration..uM.)) +
+  geom_boxplot ()+
+  geom_jitter(aes(colour=Arm, shape=Beaker.conditions), alpha=1)+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #              geom = "errorbar", width = 0.2,  color="black" )+
+  # stat_summary(fun=mean, geom="point",  color="black") + 
+  #geom_point(shape=21)+
+
+ 
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(0, 15),
+                      breaks = seq(0,20, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  ggthe_bw +
+  facet_wrap(~Nutrients)
+
+NH4_Arms
+```
+
+
+```{r}
+NH4_Temp<- ggplot(data, aes (TimePoint, NH4.concentration..uM., fill=Treatment)) +
+ 
+  geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
+  #geom_boxplot ()+
+  scale_shape_manual(values=c(21, 22))+
+  scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  scale_fill_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #              geom = "errorbar", width = 0.2,  color="black" )+
+  # stat_summary(fun=mean, geom="point",  color="black") + 
+  #geom_point(shape=21)+
+ 
+ 
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(0, 15),
+                      breaks = seq(0,20, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  ggthe_bw +
+  facet_wrap(~Nutrients)
+
+NH4_Temp
+```
+
+
+
+```{r}
+N<- ggplot(data, aes (Nutrients, N)) +
+  geom_boxplot ()+
+  scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1)+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #              geom = "errorbar", width = 0.2,  color="black" )+
+  # stat_summary(fun=mean, geom="point",  color="black") + 
+  #geom_point(shape=21)+
+
+ 
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(0, 6),
+                      breaks = seq(0,7, 2),
+                      #   expand = c(0.01, 0.01),
+                      name=("DIN [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  ggthe_bw+ facet_grid(~Date)
+
+N
+```
+
+
+```{r}
+Concentrations <- ddply (data, .(Treatment, TimePoint),
+                         summarise,
+                meanNH4 = mean (Observed.concentration..uM., na.rm = T), 
+                sdNH4 = sd (Observed.concentration..uM., na.rm = T))
+Concentrations
+
+Concentrations<-Concentrations %>% 
+ mutate_if(is.numeric, round, digits=2)
+
+Concentrations<-reshape(Concentrations, idvar = c("TimePoint"),
+                    timevar = "Treatment", direction = "wide")
+
+Concentrations$Difference<-Concentrations$meanNH4.5-Concentrations$meanNH4.0
+Concentrations
+
+```
+
+## Plot pumps
+
+
+```{r}
+NH4<- ggplot(data, aes (Treatment, Observed.concentration..uM.)) +
+  geom_boxplot ()+
+  geom_jitter(aes(fill=Pump), alpha=1, shape=21,)+
+  stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2,  color="black" )+
+  stat_summary(fun=mean, geom="point",  color="black") + 
+  #geom_point(shape=21)+
+
+ 
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(0, 11),
+                      breaks = seq(0,10, 2.5),  
+                      #   expand = c(0.01, 0.01),
+                         name=("NH4 [umol/L]")) +
+  ggthe_bw +
+  facet_grid(~TimePoint, scales = "free_y")
+
+NH4
+```
+
+```{r}
+Concentrations <- ddply (data, .(Treatment, TimePoint),
+                         summarise,
+                meanNH4 = mean (Observed.concentration..uM., na.rm = T), 
+                sdNH4 = sd (Observed.concentration..uM., na.rm = T))
+Concentrations
+
+Concentrations<-Concentrations %>% 
+ mutate_if(is.numeric, round, digits=2)
+
+Concentrations<-reshape(Concentrations, idvar = c("TimePoint"),
+                    timevar = "Treatment", direction = "wide")
+
+Concentrations$Difference<-Concentrations$meanNH4.5-Concentrations$meanNH4.0
+Concentrations
+
+```
+
+## Plot change
+
+```{r}
+delta_O2<- ggplot(wide.data, aes (Treatment.Exposure, change)) +
+  geom_boxplot ()+
+  stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2, colour="blue")+
+  stat_summary(fun=mean, geom="point", colour="blue") + 
+  geom_point(shape=21)+
+
+  geom_point(alpha=0.5, shape=21)+
+  theme(legend.position = "bottom")+
+  scale_y_continuous(#limits = c(0, 15),
+                      #   breaks = seq(0,1,0.2),  
+                      #   expand = c(0.01, 0.01),
+                         name=("delta O2 [nmol/min]")) +
+  ggthe_bw + geom_abline(slope = 0, intercept = 0)+
+  facet_grid(~Species.Exposure)
+delta_O2
+
+
+log_delta_O2<- ggplot(wide.data, aes (Treatment.Exposure, log(change))) +
+  geom_boxplot ()+
+  stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2, colour="blue")+
+  stat_summary(fun=mean, geom="point", colour="blue") + 
+  #geom_point(shape=21)+
+
+  geom_point(alpha=0.5, shape=21)+
+  theme(legend.position = "bottom")+
+  scale_y_continuous(#limits = c(0, 15),
+                      #   breaks = seq(0,1,0.2),  
+                      #   expand = c(0.01, 0.01),
+                         name=("log delta O2 [nmol/min]")) +
+  ggthe_bw + geom_abline(slope = 0, intercept = 0)+
+  facet_grid(~Species.Exposure)
+log_delta_O2
+```
+
+# 3 Models with the O2 values 
+
+## 3.1 LMMs - both time points
+
+```{r}
+## model 1: LMER for both species
+  fit1<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment * Timepoint +
+                         Species + (1|Core), data=data)
+  isSingular(fit1)
+  anova(fit1)
+  ranova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  step(fit1)
+  
+## model 2: LMER for Past
+  fit_Past<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment*Timepoint + (1|Core),
+            data=data[data$Species=="Past",])
+  isSingular(fit_Past)
+  anova(fit_Past)
+  ranova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LMER for Ssid
+  fit_Ssid<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment*Timepoint + (1|Core),
+               data=data[data$Species=="Ssid",])
+  isSingular(fit_Ssid)
+  anova(fit_Ssid)
+  ranova(fit_Ssid)
+  summary(fit_Ssid)
+  plot(fit_Ssid)
+  #step(fit_Ssid)
+```
+
+## 3.2 LMMs - Expossure - log O2
+
+```{r}
+exposure<-data[data$Timepoint=="Exposure", ]
+
+## model 1: LMER for both species
+  fit1<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment +
+                         Species + (1|Tank), data=exposure)
+  isSingular(fit1)
+  anova(fit1)
+  ranova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  #step(fit1)
+  
+## model 2: LMER for Past
+  fit_Past<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
+            data=exposure[exposure$Species=="Past",])
+  isSingular(fit_Past)
+  anova(fit_Past)
+  ranova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LMER for Ssid
+  fit_Ssid<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
+               data=exposure[exposure$Species=="Ssid",])
+  isSingular(fit_Ssid)
+  anova(fit_Ssid)
+  ranova(fit_Ssid)
+  summary(fit_Ssid)
+  plot(fit_Ssid)
+  #step(fit_Ssid)
+```
+
+## 3.3 LMMs - Expossure Raw data
+
+```{r}
+exposure<-data[data$Timepoint=="Exposure", ]
+
+## model 1: LMER for both species
+  fit1<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment +
+                         Species + (1|Tank), data=exposure)
+  isSingular(fit1)
+  anova(fit1)
+  ranova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  #step(fit1)
+  
+## model 2: LMER for Past
+  fit_Past<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
+            data=exposure[exposure$Species=="Past",])
+  isSingular(fit_Past)
+  anova(fit_Past)
+  ranova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LMER for Ssid
+  fit_Ssid<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
+               data=exposure[exposure$Species=="Ssid",])
+  isSingular(fit_Ssid)
+  anova(fit_Ssid)
+  ranova(fit_Ssid)
+  summary(fit_Ssid)
+  plot(fit_Ssid)
+  #step(fit_Ssid)
+```
+
+## 3.4 LMMs - Recovery - log O2
+
+```{r}
+recovery<-data[data$Timepoint=="Recovery", ]
+
+## model 1: LMER for both species
+  fit1<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment +
+                         Species + (1|Tank), data=recovery)
+  isSingular(fit1)
+  anova(fit1)
+  ranova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  #step(fit1)
+  
+## model 2: LMER for Past
+  fit_Past<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
+            data=recovery[recovery$Species=="Past",])
+  isSingular(fit_Past)
+  anova(fit_Past)
+  ranova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LMER for Ssid
+  fit_Ssid<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
+               data=recovery[recovery$Species=="Ssid",])
+  isSingular(fit_Ssid)
+  anova(fit_Ssid)
+  ranova(fit_Ssid)
+  summary(fit_Ssid)
+  plot(fit_Ssid)
+  #step(fit_Ssid)
+```
+
+## 3.5 LMMs - Recovery Raw data
+
+```{r}
+recovery<-data[data$Timepoint=="Recovery", ]
+
+## model 1: LMER for both species
+  fit1<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment +
+                         Species + (1|Tank), data=recovery)
+  isSingular(fit1)
+  anova(fit1)
+  ranova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  #step(fit1)
+  
+## model 2: LMER for Past
+  fit_Past<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
+            data=recovery[recovery$Species=="Past",])
+  isSingular(fit_Past)
+  anova(fit_Past)
+  ranova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LMER for Ssid
+  fit_Ssid<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
+               data=recovery[recovery$Species=="Ssid",])
+  isSingular(fit_Ssid)
+  anova(fit_Ssid)
+  ranova(fit_Ssid)
+  summary(fit_Ssid)
+  plot(fit_Ssid)
+  #step(fit_Ssid)
+```
+
+# 4 Models with O2 Change (Expossure-Initial)
+
+## 4.1 LMMs 
+
+```{r}
+## model 1: LMER for both species
+  fit1<-lmerTest::lmer(change ~Treatment.Exposure * 
+                         Species.Exposure + (1|Tank.Exposure), data=wide.data)
+  isSingular(fit1)
+  anova(fit1)
+  ranova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  #step(fit1)
+  
+## model 2: LMER for Past
+  fit_Past<-lmerTest::lmer(change ~Treatment.Exposure + (1|Tank.Exposure),
+            data=wide.data[wide.data$Species.Exposure=="Past",])
+  isSingular(fit_Past)
+  anova(fit_Past)
+  ranova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LMER for Ssid
+  fit_Ssid<-lmerTest::lmer(change ~Treatment.Exposure + (1|Tank.Exposure),
+               data=wide.data[wide.data$Species.Exposure=="Ssid",])
+  isSingular(fit_Ssid)
+  anova(fit_Ssid)
+  ranova(fit_Ssid)
+  summary(fit_Ssid)
+  plot(fit_Ssid)
+  #step(fit_Ssid)
+```
+
+```{r}
+# Pairwise comparisons
+  # Day specific comparisons
+  # Sw.emmc<-emmeans(fit4, ~Treatment)
+  # Sw_groups<-cld(Sw.emmc)
+  # Sw_groups
+```
+
+## 4.2 ANOVAs RAW DATA
+
+```{r}
+## model 1: LM for both species
+  fit1<-lm(change ~Treatment.Exposure * Species.Exposure,
+              data=wide.data)
+ 
+  anova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  
+## model 2: LM for Past
+  fit_Past<-lm(change ~Treatment.Exposure,
+              data=wide.data[wide.data$Species.Exposure=="Past",])
+  anova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LM for Ssid
+  fit_Ssid<-lm(change ~Treatment.Exposure,
+              data=wide.data[wide.data$Species.Exposure=="Ssid",])
+  anova(fit_Ssid)
+  summary(fit_Ssid)
+  par(mfrow=c(2,2))
+  plot(fit_Ssid)
+  par(mfrow=c(1,1))
+  #step(fit_Ssid)
+```
+
+## 4.3 ANOVAs log data change?
+
+```{r}
+## model 1: LMER for both species
+  fit1<-lm(log(change) ~Treatment.Exposure * Species.Exposure,
+              data=wide.data)
+  anova(fit1)
+  #ranova(fit1)
+  summary(fit1)
+  par(mfrow=c(2,2))
+  plot(fit1)
+  par(mfrow=c(1,1))
+  #step(fit1)
+  
+## model 2: LMER for Past
+  fit_Past<-lm(log(change) ~Treatment.Exposure,
+              data=wide.data[wide.data$Species.Exposure=="Past",])
+  anova(fit_Past)
+  summary(fit_Past)
+  par(mfrow=c(2,2))
+  plot(fit_Past)
+  par(mfrow=c(1,1))
+  #step(fit_Past)
+  
+## model 3: LMER for Ssid
+  fit_Ssid<-lm(log(change) ~Treatment.Exposure,
+              data=wide.data[wide.data$Species.Exposure=="Ssid",])
+  anova(fit_Ssid)
+  summary(fit_Ssid)
+  par(mfrow=c(2,2))
+  plot(fit_Ssid)
+  par(mfrow=c(1,1))
+  #step(fit_Ssid)
+
+# Pairwise comparisons
+  # Day specific comparisons
+  # Sw.emmc<-emmeans(fit4, ~Treatment)
+  # Sw_groups<-cld(Sw.emmc)
+  # Sw_groups
+
+```
+
+# Packages used
+
+```{r}
+# Creates bibliography 
+#knitr::write_bib(c(.packages()), "packages.bib")
+```
