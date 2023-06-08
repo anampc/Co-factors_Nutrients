@@ -100,17 +100,17 @@ Temperature<- ggplot(Temp, aes (Time, Temperature)) +
                       #   expand = c(0.01, 0.01),
                       name=("Temperature (C)")) +
   
-    scale_x_datetime(breaks = "5 days",
+    scale_x_datetime(breaks = "14 days",
                       date_labels = "%b %d",
                       limits = c(as.POSIXct("2023-05-02 12:30"),
-                                 as.POSIXct("2023-05-18 02:00")),
+                                 as.POSIXct("2023-06-06 02:00")),
                       #  expand = c(0.01, 0.01),
                       name=("Date")) +
   # geom_vline(xintercept = as.POSIXct("2023-05-18"),
   #            linetype=3)+
    # geom_vline(xintercept = as.POSIXct("2023-05-13"),
    #           linetype=3)+
-  ggthe_bw + facet_wrap(~Tank, ncol = 4)+
+  MyTheme + facet_wrap(~Tank, ncol = 4)+
   #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
   scale_colour_manual(
   values = c("#2b83ba",  "gray", "#d7191c"))+
@@ -125,7 +125,7 @@ Temperature
 ```{r}
 # Data
     data<-read.csv("Data/Samples.csv", header = TRUE)
-    data<-data[data$Sample.ID<833,]
+    data<-data[data$Sample.ID<1756,]
     summary(data)
     
     data$Date<-as.Date(data$Date)
@@ -149,7 +149,7 @@ Temperature
 ## Plot tanks
 
 ```{r}
-NH4<- ggplot(data, aes (Target, NH4.concentration..uM.)) +
+NH4_plot<- ggplot(data, aes (Target, NH4)) +
   #geom_boxplot ()+
   geom_jitter(aes(colour=Arm, shape=Pump), alpha=1)+
   # stat_summary(fun.data = "mean_cl_boot", 
@@ -165,15 +165,15 @@ NH4<- ggplot(data, aes (Target, NH4.concentration..uM.)) +
                       name=("NH4 [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
-  ggthe_bw +
+  MyTheme +
   facet_grid(Beaker.conditions~TimePoint, scales = "free_y")
 
-NH4
+NH4_plot
 ```
 
 
 ```{r}
-NH4<- ggplot(data, aes (TimePoint, NH4.concentration..uM.)) +
+NH4_2<- ggplot(data, aes (TimePoint, NH4)) +
   geom_boxplot ()+
   geom_jitter(aes(colour=Genotype, shape=Arm), alpha=1)+
   # stat_summary(fun.data = "mean_cl_boot", 
@@ -181,23 +181,22 @@ NH4<- ggplot(data, aes (TimePoint, NH4.concentration..uM.)) +
   # stat_summary(fun=mean, geom="point",  color="black") + 
   #geom_point(shape=21)+
 
- 
   theme(legend.position = "bottom")+
-  scale_y_continuous(limits = c(0, 7),
-                      breaks = seq(0,6, 1),  
+  scale_y_continuous(limits = c(0, 12),
+                      breaks = seq(0,10, 1),  
                       #   expand = c(0.01, 0.01),
                       name=("NH4 [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
-  ggthe_bw +
+  MyTheme +
   facet_wrap(~Nutrients, scales = "free_y")
 
-NH4
+NH4_2
 ```
 
 
 ```{r}
-NH4_Arms<- ggplot(data, aes (TimePoint, NH4.concentration..uM.)) +
+NH4_Arms<- ggplot(data, aes (TimePoint, NH4)) +
   geom_boxplot ()+
   geom_jitter(aes(colour=Arm, shape=Beaker.conditions), alpha=1)+
   # stat_summary(fun.data = "mean_cl_boot", 
@@ -213,7 +212,7 @@ NH4_Arms<- ggplot(data, aes (TimePoint, NH4.concentration..uM.)) +
                       name=("NH4 [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
-  ggthe_bw +
+  MyTheme +
   facet_wrap(~Nutrients)
 
 NH4_Arms
@@ -221,7 +220,7 @@ NH4_Arms
 
 
 ```{r}
-NH4_Temp<- ggplot(data, aes (TimePoint, NH4.concentration..uM., fill=Treatment)) +
+NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment)) +
  
   geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
   #geom_boxplot ()+
@@ -243,12 +242,12 @@ NH4_Temp<- ggplot(data, aes (TimePoint, NH4.concentration..uM., fill=Treatment))
                       name=("NH4 [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
-  ggthe_bw +
-  facet_wrap(~Nutrients)
+  MyTheme
+  NH4_Temp+facet_wrap(~Nutrients)
+  NH4_Temp+facet_grid(Disease~Nutrients)
 
 NH4_Temp
 ```
-
 
 
 ```{r}
@@ -270,7 +269,7 @@ N<- ggplot(data, aes (Nutrients, N)) +
                       name=("DIN [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
-  ggthe_bw+ facet_grid(~Date)
+  MyTheme+ facet_grid(~Date)
 
 N
 ```
@@ -311,7 +310,7 @@ NH4<- ggplot(data, aes (Treatment, Observed.concentration..uM.)) +
                       breaks = seq(0,10, 2.5),  
                       #   expand = c(0.01, 0.01),
                          name=("NH4 [umol/L]")) +
-  ggthe_bw +
+  MyTheme +
   facet_grid(~TimePoint, scales = "free_y")
 
 NH4
@@ -350,7 +349,7 @@ delta_O2<- ggplot(wide.data, aes (Treatment.Exposure, change)) +
                       #   breaks = seq(0,1,0.2),  
                       #   expand = c(0.01, 0.01),
                          name=("delta O2 [nmol/min]")) +
-  ggthe_bw + geom_abline(slope = 0, intercept = 0)+
+  MyTheme + geom_abline(slope = 0, intercept = 0)+
   facet_grid(~Species.Exposure)
 delta_O2
 
@@ -367,7 +366,7 @@ log_delta_O2<- ggplot(wide.data, aes (Treatment.Exposure, log(change))) +
                       #   breaks = seq(0,1,0.2),  
                       #   expand = c(0.01, 0.01),
                          name=("log delta O2 [nmol/min]")) +
-  ggthe_bw + geom_abline(slope = 0, intercept = 0)+
+  MyTheme + geom_abline(slope = 0, intercept = 0)+
   facet_grid(~Species.Exposure)
 log_delta_O2
 ```
