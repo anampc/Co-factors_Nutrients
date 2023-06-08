@@ -38,7 +38,7 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 MyTheme<-theme_bw() +  
 theme(legend.position="top",
           plot.background=element_blank(),
-          #axis.text.x = element_text(angle = 90, vjust = 0.5),
+          axis.text.x = element_text(angle = 90, vjust = 0.5),
           panel.grid.major.y = element_blank(),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
@@ -100,7 +100,7 @@ Temperature<- ggplot(Temp, aes (Time, Temperature)) +
                       #   expand = c(0.01, 0.01),
                       name=("Temperature (C)")) +
   
-    scale_x_datetime(breaks = "14 days",
+    scale_x_datetime(breaks = "7 days",
                       date_labels = "%b %d",
                       limits = c(as.POSIXct("2023-05-02 12:30"),
                                  as.POSIXct("2023-06-06 02:00")),
@@ -125,9 +125,10 @@ Temperature
 ```{r}
 # Data
     data<-read.csv("Data/Samples.csv", header = TRUE)
-    data<-data[data$Sample.ID<1756,]
+    data<-data[data$Sample.ID<1843,]
     summary(data)
     
+    data$N<-as.numeric(data$N)
     data$Date<-as.Date(data$Date)
     #data$Time<-as.POSIXct(data$Time)
     data$TimePoint<-factor(data$TP)
@@ -137,8 +138,11 @@ Temperature
     #                        levels=c("1", "2"))
     
     data<-droplevels(data)
-    data$Treatment<-factor(data$Treatment, levels = c ("LN_28", "LN_31", "HN_28", "HN_31", "Healthy", "Disease",  "Stock", "VAT"))
-
+    data$Treatment<-factor(data$Treatment, levels = c ("LN_28", "LN_31", "HN_28", "HN_31",
+                                                       "Healthy", "Disease",  "Stock", "VAT"))
+    data$Treatment3<-factor(paste(data$Nutrients, 
+                                  data$Disease, sep = "_"))
+    data<-data[data$Date!="2023-05-18", ]
     summary(data)
 ```
 
@@ -159,21 +163,21 @@ NH4_plot<- ggplot(data, aes (Target, NH4)) +
 
  
   theme(legend.position = "bottom")+
-  scale_y_continuous(limits = c(0, 11),
+  scale_y_continuous(#limits = c(0, 11),
                       breaks = seq(0,12, 2.5),  
                       #   expand = c(0.01, 0.01),
                       name=("NH4 [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
   MyTheme +
-  facet_grid(Beaker.conditions~TimePoint, scales = "free_y")
+  facet_grid(Beaker.conditions~Date, scales = "free_y")
 
 NH4_plot
 ```
 
 
 ```{r}
-NH4_2<- ggplot(data, aes (TimePoint, NH4)) +
+NH4_2<- ggplot(data, aes (Date, NH4)) +
   geom_boxplot ()+
   geom_jitter(aes(colour=Genotype, shape=Arm), alpha=1)+
   # stat_summary(fun.data = "mean_cl_boot", 
@@ -189,19 +193,18 @@ NH4_2<- ggplot(data, aes (TimePoint, NH4)) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
   MyTheme +
-  facet_wrap(~Nutrients, scales = "free_y")
-
+  facet_wrap(Disease~Nutrients, scales = "free_y")
 NH4_2
 ```
 
 
 ```{r}
-NH4_Arms<- ggplot(data, aes (TimePoint, NH4)) +
-  geom_boxplot ()+
+NH4_Arms<- ggplot(data, aes (Date, NH4)) +
+  #geom_boxplot ()+
   geom_jitter(aes(colour=Arm, shape=Beaker.conditions), alpha=1)+
-  # stat_summary(fun.data = "mean_cl_boot", 
-  #              geom = "errorbar", width = 0.2,  color="black" )+
-  # stat_summary(fun=mean, geom="point",  color="black") + 
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "errorbar", width = 0.2,  color="black" )+
+   stat_summary(fun=mean, geom="point",  color="black") + 
   #geom_point(shape=21)+
 
  
@@ -213,14 +216,14 @@ NH4_Arms<- ggplot(data, aes (TimePoint, NH4)) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
   MyTheme +
-  facet_wrap(~Nutrients)
+  facet_wrap(Disease~Nutrients)
 
 NH4_Arms
 ```
 
 
 ```{r}
-NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment)) +
+NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment, colour=Treatment)) +
  
   geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
   #geom_boxplot ()+
@@ -229,11 +232,65 @@ NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment)) +
                               '#CC9900','#FF33FF', '#FF6600', "#999999"))+
   scale_fill_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
                               '#CC9900','#FF33FF', '#FF6600', "#999999"))+
-  # stat_summary(fun.data = "mean_cl_boot", 
-  #              geom = "errorbar", width = 0.2,  color="black" )+
-  # stat_summary(fun=mean, geom="point",  color="black") + 
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "errorbar", width = 0.2)+
+   stat_summary(fun.data = "mean_cl_boot", 
+                geom = "line")+
+   stat_summary(fun=mean, geom="point") + 
   #geom_point(shape=21)+
  
+  theme(legend.position = "bottom")+
+  scale_y_continuous(#limits = c(0, 15),
+                      breaks = seq(0,20, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  MyTheme
+  #NH4_Temp+facet_wrap(~Nutrients)
+  NH4_Temp+facet_grid(Disease~Nutrients)
+```
+
+
+```{r}
+# N_plot<- ggplot(data, aes (Nutrients, N)) +
+#   geom_boxplot ()+
+#   scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+#                               '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+#   geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1)+
+#   # stat_summary(fun.data = "mean_cl_boot", 
+#   #              geom = "errorbar", width = 0.2,  color="black" )+
+#   # stat_summary(fun=mean, geom="point",  color="black") + 
+#   #geom_point(shape=21)+
+# 
+#  
+#   theme(legend.position = "bottom")+
+#   scale_y_continuous(limits = c(0, 20),
+#                       breaks = seq(0,17, 2),
+#                       #   expand = c(0.01, 0.01),
+#                       name=("DIN [umol/L]")) +
+#   # geom_hline(yintercept = 4.1, linetype=2)+
+#   # geom_hline(yintercept = 0.3, linetype=2)+
+#   MyTheme+ facet_grid(~Date)
+# N_plot
+```
+
+
+```{r}
+N_Temp<- ggplot(data, aes (Date, N, fill=Treatment, colour=Treatment )) +
+ 
+  geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
+  #geom_boxplot ()+
+  scale_shape_manual(values=c(21, 22))+
+  scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  scale_fill_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "errorbar", width = 0.2)+
+   stat_summary(fun.data = "mean_cl_boot", 
+                geom = "line")+
+   stat_summary(fun=mean, geom="point") + 
  
   theme(legend.position = "bottom")+
   scale_y_continuous(limits = c(0, 15),
@@ -243,53 +300,25 @@ NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment)) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
   MyTheme
-  NH4_Temp+facet_wrap(~Nutrients)
-  NH4_Temp+facet_grid(Disease~Nutrients)
+  #N_Temp+facet_wrap(~Nutrients)
+N_Temp+facet_grid(Disease~Nutrients)
 
-NH4_Temp
 ```
 
-
 ```{r}
-N<- ggplot(data, aes (Nutrients, N)) +
-  geom_boxplot ()+
-  scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
-                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
-  geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1)+
-  # stat_summary(fun.data = "mean_cl_boot", 
-  #              geom = "errorbar", width = 0.2,  color="black" )+
-  # stat_summary(fun=mean, geom="point",  color="black") + 
-  #geom_point(shape=21)+
-
- 
-  theme(legend.position = "bottom")+
-  scale_y_continuous(limits = c(0, 6),
-                      breaks = seq(0,7, 2),
-                      #   expand = c(0.01, 0.01),
-                      name=("DIN [umol/L]")) +
-  # geom_hline(yintercept = 4.1, linetype=2)+
-  # geom_hline(yintercept = 0.3, linetype=2)+
-  MyTheme+ facet_grid(~Date)
-
-N
-```
-
-
-```{r}
-Concentrations <- ddply (data, .(Treatment, TimePoint),
+Concentrations <- ddply (data, .(Nutrients, Disease, Date),
                          summarise,
-                meanNH4 = mean (Observed.concentration..uM., na.rm = T), 
-                sdNH4 = sd (Observed.concentration..uM., na.rm = T))
+                meanNH4 = mean (NH4, na.rm = T), 
+                sdNH4 = sd (NH4, na.rm = T))
 Concentrations
 
 Concentrations<-Concentrations %>% 
  mutate_if(is.numeric, round, digits=2)
 
-Concentrations<-reshape(Concentrations, idvar = c("TimePoint"),
-                    timevar = "Treatment", direction = "wide")
-
-Concentrations$Difference<-Concentrations$meanNH4.5-Concentrations$meanNH4.0
-Concentrations
+# Concentrations<-reshape(Concentrations, idvar = c("Date"),
+#                     timevar = c("Nutrients", "Disease"), direction = "wide")
+# #Concentrations$Difference<-Concentrations$meanNH4.5-Concentrations$meanNH4.0
+# Concentrations
 
 ```
 
@@ -297,7 +326,7 @@ Concentrations
 
 
 ```{r}
-NH4<- ggplot(data, aes (Treatment, Observed.concentration..uM.)) +
+NH4<- ggplot(data, aes (Treatment, NH4)) +
   geom_boxplot ()+
   geom_jitter(aes(fill=Pump), alpha=1, shape=21,)+
   stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2,  color="black" )+
@@ -311,25 +340,25 @@ NH4<- ggplot(data, aes (Treatment, Observed.concentration..uM.)) +
                       #   expand = c(0.01, 0.01),
                          name=("NH4 [umol/L]")) +
   MyTheme +
-  facet_grid(~TimePoint, scales = "free_y")
+  facet_wrap(~Date, scales = "free_y")
 
 NH4
 ```
 
 ```{r}
-Concentrations <- ddply (data, .(Treatment, TimePoint),
+Concentrations <- ddply (data, .(Treatment, Date),
                          summarise,
-                meanNH4 = mean (Observed.concentration..uM., na.rm = T), 
-                sdNH4 = sd (Observed.concentration..uM., na.rm = T))
+                meanNH4 = mean (NH4, na.rm = T), 
+                sdNH4 = sd (NH4, na.rm = T))
 Concentrations
 
 Concentrations<-Concentrations %>% 
  mutate_if(is.numeric, round, digits=2)
 
-Concentrations<-reshape(Concentrations, idvar = c("TimePoint"),
+Concentrations<-reshape(Concentrations, idvar = c("Date"),
                     timevar = "Treatment", direction = "wide")
 
-Concentrations$Difference<-Concentrations$meanNH4.5-Concentrations$meanNH4.0
+#Concentrations$Difference<-Concentrations$meanNH4.5-Concentrations$meanNH4.0
 Concentrations
 
 ```
