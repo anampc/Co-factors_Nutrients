@@ -124,7 +124,7 @@ Temperature
 
 ```{r}
 # Data
-    data<-read.csv("Data/Samples.csv", header = TRUE)
+    data<-read.csv("Data/Nutrients.csv", header = TRUE)
     data<-data[data$Sample.ID<1843,]
     summary(data)
     
