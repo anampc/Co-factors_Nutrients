@@ -64,9 +64,11 @@ Treat_colour<-scale_colour_manual(values =
 ```{r}
 # Data
     Temp<-read.csv("Data/Temperature.csv", header = TRUE)
-    summary(Temp)
+    #summary(Temp)
     Temp$Time<-as.POSIXct(Temp$Time, format="%m/%d/%Y %H:%M",
                                tz = "America/New_York" )
+    Temp<-Temp %>% filter(!between(Time, as.POSIXct('2023-05-18 08:50:00.00'),
+                                as.POSIXct('2023-05-18 09:55:00.00')))
     
     Temp <- gather(Temp, Tank, Temperature, 
                    Tank.1:Tank.8, factor_key=TRUE)
@@ -106,10 +108,11 @@ Temperature<- ggplot(Temp, aes (Time, Temperature)) +
                                  as.POSIXct("2023-06-06 02:00")),
                       #  expand = c(0.01, 0.01),
                       name=("Date")) +
-  # geom_vline(xintercept = as.POSIXct("2023-05-18"),
-  #            linetype=3)+
-   # geom_vline(xintercept = as.POSIXct("2023-05-13"),
-   #           linetype=3)+
+   
+  geom_vline(xintercept = as.POSIXct("2023-05-18"),
+              linetype=2)+
+  annotate("text", x = c(as.POSIXct("2023-05-13"), as.POSIXct("2023-06-02")), y = 27, label = "*")+
+  
   MyTheme + facet_wrap(~Tank, ncol = 4)+
   #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
   scale_colour_manual(
@@ -118,6 +121,51 @@ Temperature<- ggplot(Temp, aes (Time, Temperature)) +
 
 Temperature
 ```
+
+```{r}
+Temp.stats<-Temp %>% 
+  mutate(day = floor_date(Time, "day"))
+Temp.stats$day<-as.factor(Temp.stats$day)
+
+Temp.stats1<-Temp.stats %>% group_by("day", "Tank") %>%
+  dplyr::summarize(avg = mean(Temperature),
+                   sd=sd(Temperature))
+```
+
+
+```{r}
+Temperature<- ggplot(Temp, aes (Time, Temperature)) +
+  geom_jitter(aes(colour=Group), alpha=1, size=0.5)+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #              geom = "errorbar", width = 0.2,  color="black" )+
+  # stat_summary(fun=mean, geom="point",  color="black") + 
+
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(26, 32),
+                      breaks = seq(0,32, 2),  
+                      #   expand = c(0.01, 0.01),
+                      name=("Temperature (C)")) +
+  
+    scale_x_datetime(breaks = "7 days",
+                      date_labels = "%b %d",
+                      limits = c(as.POSIXct("2023-05-02 12:30"),
+                                 as.POSIXct("2023-06-06 02:00")),
+                      #  expand = c(0.01, 0.01),
+                      name=("Date")) +
+   
+  geom_vline(xintercept = as.POSIXct("2023-05-18"),
+              linetype=2)+
+  annotate("text", x = c(as.POSIXct("2023-05-13"), as.POSIXct("2023-06-02")), y = 27, label = "*")+
+  
+  MyTheme + facet_wrap(~Tank, ncol = 4)+
+  #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
+  scale_colour_manual(
+  values = c("#2b83ba",  "gray", "#d7191c"))+
+  theme(legend.position = "none")
+
+Temperature
+```
+
 
 
 # 2. Nutrients
