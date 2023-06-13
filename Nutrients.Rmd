@@ -69,69 +69,35 @@ Treat_colour<-scale_colour_manual(values =
                                tz = "America/New_York" )
     Temp<-Temp %>% filter(!between(Time, as.POSIXct('2023-05-18 08:50:00.00'),
                                 as.POSIXct('2023-05-18 09:55:00.00')))
+   
     
     Temp <- gather(Temp, Tank, Temperature, 
                    Tank.1:Tank.8, factor_key=TRUE)
     #Temp<-Temp[Temp$Tank!="Tank.6",]
     #Temp<-Temp[Temp$Tank!="Tank.7",]
     Temp<-Temp %>% mutate(Group =
-                     case_when(Tank == "Tank.1" ~ "Control Temp", 
-                               Tank == "Tank.2" ~ "High Temp", 
-                               Tank == "Tank.3" ~ "High Temp", 
-                               Tank == "Tank.4" ~ "Control Temp",
-                               Tank == "Tank.5" ~ "Control Temp", 
-                               Tank == "Tank.6" ~ "Donor colony", 
-                               Tank == "Tank.7" ~ "Donor colony", 
-                               Tank == "Tank.8" ~ "High Temp",))
-    Temp<-Temp[Temp$Temperature>27.5,]
+                     case_when(Tank == "Tank.1" ~ "Control Temperature", 
+                               Tank == "Tank.2" ~ "High Temperature", 
+                               Tank == "Tank.3" ~ "High Temperature", 
+                               Tank == "Tank.4" ~ "Control Temperature",
+                               Tank == "Tank.5" ~ "Control Temperature", 
+                               Tank == "Tank.6" ~ "Donor colonies", 
+                               Tank == "Tank.7" ~ "Donor colonies", 
+                               Tank == "Tank.8" ~ "High Temperature"))
+    Temp$Group<-factor(Temp$Group, levels = c("Control Temperature",
+                                              "High Temperature",
+                                              "Donor colonies"))
+    
+    # Remove data from tank that had a sensor failed
+    Temp<-Temp %>% filter((Time<as.POSIXct('2023-06-02 00:50:00.00') | 
+                          Tank!="Tank.8"))
+    Temp$Date<-as.Date(Temp$Time)
     summary(Temp)
 ```
 
 ## Plot tanks
 
-```{r}
-Temperature<- ggplot(Temp, aes (Time, Temperature)) +
-  geom_jitter(aes(colour=Group), alpha=1, size=0.5)+
-  # stat_summary(fun.data = "mean_cl_boot", 
-  #              geom = "errorbar", width = 0.2,  color="black" )+
-  # stat_summary(fun=mean, geom="point",  color="black") + 
-
-  theme(legend.position = "bottom")+
-  scale_y_continuous(limits = c(26, 32),
-                      breaks = seq(0,32, 2),  
-                      #   expand = c(0.01, 0.01),
-                      name=("Temperature (C)")) +
-  
-    scale_x_datetime(breaks = "7 days",
-                      date_labels = "%b %d",
-                      limits = c(as.POSIXct("2023-05-02 12:30"),
-                                 as.POSIXct("2023-06-06 02:00")),
-                      #  expand = c(0.01, 0.01),
-                      name=("Date")) +
-   
-  geom_vline(xintercept = as.POSIXct("2023-05-18"),
-              linetype=2)+
-  annotate("text", x = c(as.POSIXct("2023-05-13"), as.POSIXct("2023-06-02")), y = 27, label = "*")+
-  
-  MyTheme + facet_wrap(~Tank, ncol = 4)+
-  #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
-  scale_colour_manual(
-  values = c("#2b83ba",  "gray", "#d7191c"))+
-  theme(legend.position = "none")
-
-Temperature
-```
-
-```{r}
-Temp.stats<-Temp %>% 
-  mutate(day = floor_date(Time, "day"))
-Temp.stats$day<-as.factor(Temp.stats$day)
-
-Temp.stats1<-Temp.stats %>% group_by("day", "Tank") %>%
-  dplyr::summarize(avg = mean(Temperature),
-                   sd=sd(Temperature))
-```
-
+Raw values
 
 ```{r}
 Temperature<- ggplot(Temp, aes (Time, Temperature)) +
@@ -155,17 +121,52 @@ Temperature<- ggplot(Temp, aes (Time, Temperature)) +
    
   geom_vline(xintercept = as.POSIXct("2023-05-18"),
               linetype=2)+
-  annotate("text", x = c(as.POSIXct("2023-05-13"), as.POSIXct("2023-06-02")), y = 27, label = "*")+
+  annotate("text", x = c(as.POSIXct("2023-05-13"), as.POSIXct("2023-06-12")), y = 27, label = "*")+
   
   MyTheme + facet_wrap(~Tank, ncol = 4)+
   #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
   scale_colour_manual(
-  values = c("#2b83ba",  "gray", "#d7191c"))+
+  values = c("#2b83ba", "#d7191c", "gray"))+
   theme(legend.position = "none")
+
+#Temperature
+```
+
+Daily mean values
+
+```{r}
+Temperature<- ggplot(Temp, aes (Date, Temperature, colour=Group)) +
+  #geom_jitter(aes(colour=Group), alpha=1, size=0.5)+
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "errorbar", width = 0.2)+
+  stat_summary(fun=mean, geom="line", alpha=0.8) + 
+
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(27.3, 31.3),
+                      breaks = seq(0,32, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=expression(Temperature~(degree~C))) +
+  
+    scale_x_date(breaks = "7 days",
+                      date_labels = "%b %d",
+                      limits = c(as.Date("2023-05-02"),
+                                 as.Date("2023-06-12")),
+                      #  expand = c(0.01, 0.01),
+                      name=("Date")) +
+   
+  geom_vline(xintercept = as.Date(c("2023-05-18", "2023-06-02")),
+              linetype=2, alpha=0.5)+
+  annotate("text", x = c(as.Date("2023-05-13"), 
+                         as.Date("2023-06-02")), y = 27.5, label = "*")+
+  
+  MyTheme + facet_wrap(~Tank, ncol = 4)+
+  #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
+  scale_colour_manual(
+  values = c("#2b83ba", "#d7191c", "gray"))+
+  theme(legend.position = "top")
 
 Temperature
 ```
-
 
 
 # 2. Nutrients
@@ -179,6 +180,7 @@ Temperature
     data$N<-as.numeric(data$N)
     data$Date<-as.Date(data$Date)
     #data$Time<-as.POSIXct(data$Time)
+    data$w<-format(as.Date(data$Date, "%U"))-17
     data$TimePoint<-factor(data$TP)
     data$Target<-factor(data$Target,
                            levels=c("0", "5", "6"))
@@ -225,7 +227,7 @@ NH4_plot
 
 
 ```{r}
-NH4_2<- ggplot(data, aes (Date, NH4)) +
+NH4_genotype<- ggplot(data, aes (Date, NH4)) +
   geom_boxplot ()+
   geom_jitter(aes(colour=Genotype, shape=Arm), alpha=1)+
   # stat_summary(fun.data = "mean_cl_boot", 
@@ -242,7 +244,7 @@ NH4_2<- ggplot(data, aes (Date, NH4)) +
   # geom_hline(yintercept = 0.3, linetype=2)+
   MyTheme +
   facet_wrap(Disease~Nutrients, scales = "free_y")
-NH4_2
+NH4_genotype
 ```
 
 
@@ -282,9 +284,9 @@ NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment, colour=Treatment)) +
                               '#CC9900','#FF33FF', '#FF6600', "#999999"))+
   stat_summary(fun.data = "mean_cl_boot", 
                 geom = "errorbar", width = 0.2)+
-   stat_summary(fun.data = "mean_cl_boot", 
+  stat_summary(fun.data = "mean_cl_boot", 
                 geom = "line")+
-   stat_summary(fun=mean, geom="point") + 
+  stat_summary(fun=mean, geom="point") + 
   #geom_point(shape=21)+
  
   theme(legend.position = "bottom")+
