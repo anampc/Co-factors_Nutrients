@@ -38,7 +38,7 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 MyTheme<-theme_bw() +  
 theme(legend.position="top",
           plot.background=element_blank(),
-          axis.text.x = element_text(angle = 90, vjust = 0.5),
+          #axis.text.x = element_text(angle = 90, vjust = 0.5),
           panel.grid.major.y = element_blank(),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
@@ -92,6 +92,8 @@ Treat_colour<-scale_colour_manual(values =
     Temp<-Temp %>% filter((Time<as.POSIXct('2023-06-02 00:50:00.00') | 
                           Tank!="Tank.8"))
     Temp$Date<-as.Date(Temp$Time)
+    Temp$Day<-as.numeric(difftime(Temp$Date, 
+                                  as.Date("2023-05-01"), units="days"))
     summary(Temp)
 ```
 
@@ -135,7 +137,7 @@ Temperature<- ggplot(Temp, aes (Time, Temperature)) +
 Daily mean values
 
 ```{r}
-Temperature<- ggplot(Temp, aes (Date, Temperature, colour=Group)) +
+Temperature<- ggplot(Temp, aes (Day, Temperature, colour=Group)) +
   #geom_jitter(aes(colour=Group), alpha=1, size=0.5)+
   stat_summary(fun.data = "mean_cl_boot", 
                 geom = "errorbar", width = 0.2)+
@@ -146,18 +148,22 @@ Temperature<- ggplot(Temp, aes (Date, Temperature, colour=Group)) +
                       breaks = seq(0,32, 1),  
                       #   expand = c(0.01, 0.01),
                       name=expression(Temperature~(degree~C))) +
+      scale_x_continuous(breaks = seq(0, 45, 7),
+                      name=("Day in the expeiment")) +
   
-    scale_x_date(breaks = "7 days",
-                      date_labels = "%b %d",
-                      limits = c(as.Date("2023-05-02"),
-                                 as.Date("2023-06-12")),
-                      #  expand = c(0.01, 0.01),
-                      name=("Date")) +
+    # scale_x_date(breaks = "7 days",
+    #                   date_labels = "%b %d",
+    #                   limits = c(as.Date("2023-05-02"),
+    #                              as.Date("2023-06-12")),
+    #                   #  expand = c(0.01, 0.01),
+    #                   name=("Date")) +
    
-  geom_vline(xintercept = as.Date(c("2023-05-18", "2023-06-02")),
+  #geom_vline(xintercept = as.Date(c("2023-05-18", "2023-06-02")),
+  #            linetype=2, alpha=0.5)+
+  # annotate("text", x = c(as.Date("2023-05-13"), 
+  #                        as.Date("2023-06-02")), y = 27.5, label = "*")+
+  geom_vline(xintercept = c(17, 32),
               linetype=2, alpha=0.5)+
-  annotate("text", x = c(as.Date("2023-05-13"), 
-                         as.Date("2023-06-02")), y = 27.5, label = "*")+
   
   MyTheme + facet_wrap(~Tank, ncol = 4)+
   #facet_wrap(~(fct_rev(Tank)), ncol = 4)+
@@ -184,7 +190,7 @@ Temperature
     library(lubridate)
     data$Week<-isoweek(ymd(data$Date))
     
-    data$TimePoint<-factor(data$TP)-17
+    #data$TimePoint<-factor(data$TP)-17
     data$Target<-factor(data$Target,
                            levels=c("0", "5", "6"))
     # data$Pump<-factor(data$Pump,
@@ -196,6 +202,9 @@ Temperature
     data$Treatment3<-factor(paste(data$Nutrients, 
                                   data$Disease, sep = "_"))
     data<-data[data$Date!="2023-05-18", ]
+    data$Day<-as.numeric(difftime(data$Date, 
+                                  as.Date("2023-05-01"), units="days"))
+
     summary(data)
 ```
 
