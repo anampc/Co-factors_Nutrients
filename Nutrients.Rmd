@@ -178,10 +178,13 @@ Temperature
     summary(data)
     
     data$N<-as.numeric(data$N)
+    
     data$Date<-as.Date(data$Date)
     #data$Time<-as.POSIXct(data$Time)
-    data$w<-format(as.Date(data$Date, "%U"))-17
-    data$TimePoint<-factor(data$TP)
+    library(lubridate)
+    data$Week<-isoweek(ymd(data$Date))
+    
+    data$TimePoint<-factor(data$TP)-17
     data$Target<-factor(data$Target,
                            levels=c("0", "5", "6"))
     # data$Pump<-factor(data$Pump,
@@ -275,7 +278,7 @@ NH4_Arms
 ```{r}
 NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment, colour=Treatment)) +
  
-  geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
+  #geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
   #geom_boxplot ()+
   scale_shape_manual(values=c(21, 22))+
   scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
@@ -303,26 +306,33 @@ NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment, colour=Treatment)) +
 
 
 ```{r}
-# N_plot<- ggplot(data, aes (Nutrients, N)) +
-#   geom_boxplot ()+
-#   scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
-#                               '#CC9900','#FF33FF', '#FF6600', "#999999"))+
-#   geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1)+
-#   # stat_summary(fun.data = "mean_cl_boot", 
-#   #              geom = "errorbar", width = 0.2,  color="black" )+
-#   # stat_summary(fun=mean, geom="point",  color="black") + 
-#   #geom_point(shape=21)+
-# 
-#  
-#   theme(legend.position = "bottom")+
-#   scale_y_continuous(limits = c(0, 20),
-#                       breaks = seq(0,17, 2),
-#                       #   expand = c(0.01, 0.01),
-#                       name=("DIN [umol/L]")) +
-#   # geom_hline(yintercept = 4.1, linetype=2)+
-#   # geom_hline(yintercept = 0.3, linetype=2)+
-#   MyTheme+ facet_grid(~Date)
-# N_plot
+NH4_W<- ggplot(data, aes (Week, NH4, fill=Treatment, colour=Treatment)) +
+ 
+  geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), 
+              alpha=1, size =1)+
+  geom_boxplot(aes (Week, NH4, fill=Treatment, group=Week))+
+  scale_shape_manual(values=c(21, 22))+
+  scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  scale_fill_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "errorbar", width = 0.2)+
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "line")+
+  stat_summary(fun=mean, geom="point") + 
+  #geom_point(shape=21)+
+ 
+  theme(legend.position = "bottom")+
+  scale_y_continuous(#limits = c(0, 15),
+                      breaks = seq(0,20, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  MyTheme
+  #NH4_Temp+facet_wrap(~Nutrients)
+  NH4_W+facet_grid(Disease~Nutrients)
 ```
 
 
