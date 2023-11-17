@@ -1,5 +1,5 @@
 ---
-title: "Nutrients overtime"
+title: "Experimental conditions"
 author: "Ana M. Palacio"
 date: "`r Sys.Date()`"
 output:
@@ -29,8 +29,10 @@ knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
     library(plyr)
     library(tidyr)
 
+    library(plotrix)
     library(lme4)
     library(lmerTest)
+    library(emmeans)
     library(reshape2)
 
 # Graphs
@@ -102,7 +104,24 @@ Treat_colour<-scale_colour_manual(values =
     summary(Temp)
 ```
 
-## Plot tanks
+```{r}
+Temp_summary <- ddply (Temp[Temp$Day>0, ], .(Group2),
+                         summarise,
+                meanT = mean (Temperature, na.rm = T), 
+                sdT = sd (Temperature, na.rm = T), 
+                seT = std.error (Temperature, na.rm = T))
+Temp_summary
+
+Temp_summary <- ddply (Temp[Temp$Day>5, ], .(Group2),
+                         summarise,
+                meanT = mean (Temperature, na.rm = T), 
+                sdT = sd (Temperature, na.rm = T), 
+                seT = std.error (Temperature, na.rm = T))
+Temp_summary
+```
+
+
+### Plot tanks
 
 Raw values
 
@@ -153,7 +172,7 @@ Temperature<- ggplot(Temp, aes (Day, Temperature, colour=Group2)) +
                       breaks = seq(0,32, 1),  
                       #   expand = c(0.01, 0.01),
                       name=expression(Temperature~(degree~C))) +
-      scale_x_continuous(breaks = seq(0, 51, 7),
+  scale_x_continuous(breaks = seq(0, 51, 7),
                       name=("Days in the experiment")) +
   
     # scale_x_date(breaks = "7 days",
@@ -177,6 +196,38 @@ Temperature<- ggplot(Temp, aes (Day, Temperature, colour=Group2)) +
   theme(legend.position = "top")
 
 Temperature
+
+ggsave(file="Outputs/Temperature.svg", plot=Temperature, width=8, height=4)
+```
+
+
+```{r}
+TimeLine<- ggplot(Temp, aes (Day, Temperature, 
+                                colour=Group2)) +
+  #geom_jitter(aes(colour=Group), alpha=1, size=0.5)+
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "errorbar", width = 0.2)+
+  stat_summary(fun=mean, geom="line", alpha=0.8) + 
+
+  theme(legend.position = "bottom")+
+  scale_y_continuous(limits = c(27.3, 31.3),
+                      breaks = seq(0,32, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=expression(Temperature~(degree~C))) +
+  scale_x_continuous(breaks = seq(0, 51, 7),
+                      name=("Days in the experiment")) +
+  annotate("text", x = c(14, 31), y = 27.5, label = "*")+
+  geom_vline(xintercept = c(1, 17, 32),
+              linetype=2, alpha=0.5)+
+  
+  MyTheme + facet_wrap(~Group2, ncol = 1)+
+  scale_colour_manual(
+  values = c("#2b83ba", "#d7191c", "gray"))+
+  theme(legend.position = "top")
+
+TimeLine
+
+ggsave(file="Outputs/TimeLine.svg", plot=TimeLine, width=4, height=6)
 ```
 
 
@@ -185,7 +236,7 @@ Temperature
 ```{r}
 # Data
     data<-read.csv("Data/Nutrients.csv", header = TRUE)
-    data<-data[data$Sample.ID<1843,]
+    #data<-data[data$Sample.ID<1843,]
     summary(data)
     
     data$N<-as.numeric(data$N)
@@ -214,11 +265,7 @@ Temperature
     summary(data)
 ```
 
-
-
-# 2. Exploratory plots
-
-## Plot tanks
+## Exploratory plots
 
 ```{r}
 NH4_plot<- ggplot(data, aes (Target, NH4)) +
@@ -240,7 +287,7 @@ NH4_plot<- ggplot(data, aes (Target, NH4)) +
   MyTheme +
   facet_grid(Beaker.conditions~Date, scales = "free_y")
 
-NH4_plot
+#NH4_plot
 ```
 
 
@@ -265,9 +312,8 @@ NH4_genotype<- ggplot(data, aes (Date, NH4)) +
 NH4_genotype
 ```
 
-
 ```{r}
-NH4_Arms<- ggplot(data, aes (Date, NH4)) +
+NH4_Arms<- ggplot(data, aes (Day, NH4)) +
   #geom_boxplot ()+
   geom_jitter(aes(colour=Arm, shape=Beaker.conditions), alpha=1)+
   stat_summary(fun.data = "mean_cl_boot", 
@@ -275,8 +321,13 @@ NH4_Arms<- ggplot(data, aes (Date, NH4)) +
    stat_summary(fun=mean, geom="point",  color="black") + 
   #geom_point(shape=21)+
 
- 
   theme(legend.position = "bottom")+
+  geom_vline(xintercept = c(17, 32),
+              linetype=2, alpha=0.5)+
+  scale_x_continuous(limits = c(0, 55),
+                      breaks = seq(0,55, 7),  
+                      #   expand = c(0.01, 0.01),
+                      name=("Days in the experiment")) +
   scale_y_continuous(limits = c(0, 15),
                       breaks = seq(0,20, 1),  
                       #   expand = c(0.01, 0.01),
@@ -289,34 +340,42 @@ NH4_Arms<- ggplot(data, aes (Date, NH4)) +
 NH4_Arms
 ```
 
-
 ```{r}
-NH4_Temp<- ggplot(data, aes (Date, NH4, fill=Treatment, colour=Treatment)) +
+Corals<-data[data$Nutrients!="Other", ]
+NH4_Temp<- ggplot(Corals, aes (Day, NH4, fill=Treatment, 
+                               colour=Treatment,
+                               shape=Beaker.conditions)) +
  
-  #geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
+  #geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), 
+  #alpha=1, size =1)+
   #geom_boxplot ()+
   scale_shape_manual(values=c(21, 22))+
   scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
                               '#CC9900','#FF33FF', '#FF6600', "#999999"))+
   scale_fill_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
                               '#CC9900','#FF33FF', '#FF6600', "#999999"))+
-  stat_summary(fun.data = "mean_cl_boot", 
-                geom = "errorbar", width = 0.2)+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #               geom = "errorbar", width = 0.2)+
   stat_summary(fun.data = "mean_cl_boot", 
                 geom = "line")+
   stat_summary(fun=mean, geom="point") + 
   #geom_point(shape=21)+
- 
-  theme(legend.position = "bottom")+
-  scale_y_continuous(#limits = c(0, 15),
-                      breaks = seq(0,20, 1),  
+   geom_vline(xintercept = c(17, 32),
+              linetype=2, alpha=0.5)+
+  scale_x_continuous(limits = c(0, 55),
+                      breaks = seq(0,55, 7),  
+                      #   expand = c(0.01, 0.01),
+                      name=("Day in the experiment")) +
+  scale_y_continuous(limits = c(0, 60),
+                      breaks = seq(0, 20, 1),  
                       #   expand = c(0.01, 0.01),
                       name=("NH4 [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
+  #ylim()+
   MyTheme
   #NH4_Temp+facet_wrap(~Nutrients)
-  NH4_Temp+facet_grid(Disease~Nutrients)
+NH4_Temp+facet_grid(Disease~Nutrients)
 ```
 
 
@@ -339,7 +398,7 @@ NH4_W<- ggplot(data, aes (Week, NH4, fill=Treatment, colour=Treatment)) +
   #geom_point(shape=21)+
  
   theme(legend.position = "bottom")+
-  scale_y_continuous(#limits = c(0, 15),
+  scale_y_continuous(limits = c(0, 20),
                       breaks = seq(0,20, 1),  
                       #   expand = c(0.01, 0.01),
                       name=("NH4 [umol/L]")) +
@@ -350,11 +409,89 @@ NH4_W<- ggplot(data, aes (Week, NH4, fill=Treatment, colour=Treatment)) +
   NH4_W+facet_grid(Disease~Nutrients)
 ```
 
+```{r}
+Corals<-data[data$Nutrients!="Other", ]
+
+Concentrations <- ddply (Corals, .(Treatment, Disease, Beaker.conditions, Nutrients, Day),
+                         summarise,
+                meanNH4 = mean (NH4, na.rm = T), 
+                sdNH4 = sd (NH4, na.rm = T), 
+                seNH4 = std.error (NH4, na.rm = T))
+Concentrations
+
+Concentrations$Beaker.conditions<-factor(Concentrations$Beaker.conditions, 
+                                            levels=c("Coral", "Blank"))
+Concentrations$Nutrients<-factor(Concentrations$Nutrients, 
+                                            levels=c("LN", "HN"))
+
+write.csv(Concentrations, "Outputs/Concentrations.csv")
+
+# Standard error of the mean
+
+NH4_day<-ggplot(Concentrations, aes(x=Day, y=(meanNH4), colour=Treatment, shape=Beaker.conditions)) + 
+    geom_errorbar(aes(ymin=(meanNH4-seNH4), ymax=(meanNH4+seNH4)), 
+                  width=.1, position=position_dodge(0.5)) +
+    geom_line(position=position_dodge(0.5), aes(linetype=Beaker.conditions)) +
+    geom_point(position=position_dodge(0.5), aes(fill=Treatment), size=1)+
+  scale_shape_manual(values=c(21, 22))+
+  scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000"))+
+  scale_fill_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000"))+
+  geom_vline(xintercept = c(17, 32),
+              linetype=2, alpha=0.5)+
+  scale_x_continuous(#limits = c(0, 55),
+                      breaks = seq(1,55, 7),  
+                      #   expand = c(0.01, 0.01),
+                      name=("Days in the experiment")) +
+  scale_y_continuous(#limits = c(0, 60),
+                      breaks = seq(0, 35, 2.5),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) + MyTheme +
+  facet_grid(Disease~Nutrients)
+NH4_day
+
+#ggsave(file="Outputs/Nutrients.svg", plot=NH4_day, width=8, height=5)
+```
+
+```{r}
+NH4_day<- ggplot(Corals, aes (Day, NH4, fill=Treatment, 
+                               colour=Treatment,
+                               shape=Beaker.conditions)) +
+ 
+  #geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), 
+  #alpha=1, size =1)+
+  #geom_boxplot ()+
+  scale_shape_manual(values=c(21, 22))+
+  scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  scale_fill_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
+                              '#CC9900','#FF33FF', '#FF6600', "#999999"))+
+  # stat_summary(fun.data = "mean_cl_boot", 
+  #               geom = "errorbar", width = 0.2)+
+  stat_summary(fun.data = "mean_cl_boot", 
+                geom = "line")+
+  stat_summary(fun=mean, geom="point") + 
+  #geom_point(shape=21)+
+   geom_vline(xintercept = c(17, 32),
+              linetype=2, alpha=0.5)+
+  scale_x_continuous(limits = c(0, 55),
+                      breaks = seq(0,55, 7),  
+                      #   expand = c(0.01, 0.01),
+                      name=("Day in the experiment")) +
+  scale_y_continuous(limits = c(0, 60),
+                      breaks = seq(0, 20, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  # geom_hline(yintercept = 4.1, linetype=2)+
+  # geom_hline(yintercept = 0.3, linetype=2)+
+  #ylim()+
+  MyTheme
+  #NH4_Temp+facet_wrap(~Nutrients)
+NH4_day+facet_grid(Disease~Nutrients)
+```
 
 
 ```{r}
-Corals<-data[data$Nutrients!="Other", ]
-NH4_2<- ggplot(Corals, aes(Week, NH4, fill=Treatment, colour=Treatment)) +
+NH4_week<- ggplot(Corals, aes(Week, NH4, fill=Treatment, colour=Treatment)) +
  
   geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), 
               alpha=1, size =2)+
@@ -372,20 +509,22 @@ NH4_2<- ggplot(Corals, aes(Week, NH4, fill=Treatment, colour=Treatment)) +
   #geom_point(shape=21)+
  
   theme(legend.position = "bottom")+
-  scale_y_continuous(#limits = c(0, 15),
+  scale_y_continuous(limits = c(0, 15),
                       breaks = seq(0,20, 1),  
+                      #   expand = c(0.01, 0.01),
+                      name=("NH4 [umol/L]")) +
+  scale_x_continuous(limits = c(1, 8),
+                      breaks = seq(0,8, 1),  
                       #   expand = c(0.01, 0.01),
                       name=("NH4 [umol/L]")) +
   # geom_hline(yintercept = 4.1, linetype=2)+
   # geom_hline(yintercept = 0.3, linetype=2)+
   MyTheme
   #NH4_Temp+facet_wrap(~Nutrients)
-  NH4_2+facet_grid(Disease~Nutrients)
+  NH4_week+facet_grid(Disease~Nutrients)
 ```
 
-
 ```{r}
-
 NH4_3<- ggplot(data[data$Nutrients=="Other", ],
                aes(Week, NH4, fill=Treatment, colour=Treatment)) +
  
@@ -460,13 +599,11 @@ Concentrations<-Concentrations %>%
 
 ```
 
-## Plot pumps
-
 
 ```{r}
 NH4<- ggplot(data, aes (Treatment, NH4)) +
   geom_boxplot ()+
-  geom_jitter(aes(fill=Pump), alpha=1, shape=21,)+
+  #geom_jitter(aes(fill=Pump), alpha=1, shape=21,)+
   stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2,  color="black" )+
   stat_summary(fun=mean, geom="point",  color="black") + 
   #geom_point(shape=21)+
@@ -480,386 +617,59 @@ NH4<- ggplot(data, aes (Treatment, NH4)) +
   MyTheme +
   facet_wrap(~Date, scales = "free_y")
 
-NH4
+#NH4
 ```
 
 ```{r}
-Concentrations <- ddply (data, .(Treatment, Date),
+
+Concentrations_Day_Beaker <- ddply (data, .(Nutrients, Day, Beaker.conditions),
                          summarise,
                 meanNH4 = mean (NH4, na.rm = T), 
                 sdNH4 = sd (NH4, na.rm = T))
-Concentrations
+Concentrations_Day_Beaker
+
+Concentrations_Nutrients_Day <- ddply (data, .(Nutrients, Day),
+                         summarise,
+                meanNH4 = mean (NH4, na.rm = T), 
+                sdNH4 = sd (NH4, na.rm = T))
+Concentrations_Nutrients_Day
+
+Concentrations_Nutrients_Week <- ddply (data, .(Nutrients, Week),
+                         summarise,
+                meanNH4 = mean (NH4, na.rm = T), 
+                sdNH4 = sd (NH4, na.rm = T))
+Concentrations_Nutrients_Week
 
 Concentrations<-Concentrations %>% 
  mutate_if(is.numeric, round, digits=2)
 
-Concentrations<-reshape(Concentrations, idvar = c("Date"),
-                    timevar = "Treatment", direction = "wide")
-
-#Concentrations$Difference<-Concentrations$meanNH4.5-Concentrations$meanNH4.0
-Concentrations
-
+# Concentrations<-reshape(Concentrations, idvar = c("Date"),
+#                     timevar = "Treatment", direction = "wide")
+# Concentrations
+# write.csv(Concentrations, "Outputs/weekly_NH4.csv", row.names = F)
 ```
 
-## Plot change
-
-```{r}
-delta_O2<- ggplot(wide.data, aes (Treatment.Exposure, change)) +
-  geom_boxplot ()+
-  stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2, colour="blue")+
-  stat_summary(fun=mean, geom="point", colour="blue") + 
-  geom_point(shape=21)+
-
-  geom_point(alpha=0.5, shape=21)+
-  theme(legend.position = "bottom")+
-  scale_y_continuous(#limits = c(0, 15),
-                      #   breaks = seq(0,1,0.2),  
-                      #   expand = c(0.01, 0.01),
-                         name=("delta O2 [nmol/min]")) +
-  MyTheme + geom_abline(slope = 0, intercept = 0)+
-  facet_grid(~Species.Exposure)
-delta_O2
-
-
-log_delta_O2<- ggplot(wide.data, aes (Treatment.Exposure, log(change))) +
-  geom_boxplot ()+
-  stat_summary(fun.data = "mean_cl_boot",geom = "errorbar", width = 0.2, colour="blue")+
-  stat_summary(fun=mean, geom="point", colour="blue") + 
-  #geom_point(shape=21)+
-
-  geom_point(alpha=0.5, shape=21)+
-  theme(legend.position = "bottom")+
-  scale_y_continuous(#limits = c(0, 15),
-                      #   breaks = seq(0,1,0.2),  
-                      #   expand = c(0.01, 0.01),
-                         name=("log delta O2 [nmol/min]")) +
-  MyTheme + geom_abline(slope = 0, intercept = 0)+
-  facet_grid(~Species.Exposure)
-log_delta_O2
-```
-
-# 3 Models with the O2 values 
-
-## 3.1 LMMs - both time points
+#3. Treatment effects on NH4 concentrations
 
 ```{r}
 ## model 1: LMER for both species
-  fit1<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment * Timepoint +
-                         Species + (1|Core), data=data)
+  fit1<-lmerTest::lmer(NH4 ~Nutrients * Temp * Disease * Week +
+                         (1|Beaker.conditions), data=data[data$Nutrients!="Other", ])
   isSingular(fit1)
   anova(fit1)
-  ranova(fit1)
-  summary(fit1)
-  par(mfrow=c(2,2))
-  plot(fit1)
-  par(mfrow=c(1,1))
   step(fit1)
-  
-## model 2: LMER for Past
-  fit_Past<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment*Timepoint + (1|Core),
-            data=data[data$Species=="Past",])
-  isSingular(fit_Past)
-  anova(fit_Past)
-  ranova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LMER for Ssid
-  fit_Ssid<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment*Timepoint + (1|Core),
-               data=data[data$Species=="Ssid",])
-  isSingular(fit_Ssid)
-  anova(fit_Ssid)
-  ranova(fit_Ssid)
-  summary(fit_Ssid)
-  plot(fit_Ssid)
-  #step(fit_Ssid)
-```
-
-## 3.2 LMMs - Expossure - log O2
-
-```{r}
-exposure<-data[data$Timepoint=="Exposure", ]
-
-## model 1: LMER for both species
-  fit1<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment +
-                         Species + (1|Tank), data=exposure)
-  isSingular(fit1)
-  anova(fit1)
   ranova(fit1)
+  
   summary(fit1)
   par(mfrow=c(2,2))
   plot(fit1)
   par(mfrow=c(1,1))
-  #step(fit1)
-  
-## model 2: LMER for Past
-  fit_Past<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
-            data=exposure[exposure$Species=="Past",])
-  isSingular(fit_Past)
-  anova(fit_Past)
-  ranova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LMER for Ssid
-  fit_Ssid<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
-               data=exposure[exposure$Species=="Ssid",])
-  isSingular(fit_Ssid)
-  anova(fit_Ssid)
-  ranova(fit_Ssid)
-  summary(fit_Ssid)
-  plot(fit_Ssid)
-  #step(fit_Ssid)
-```
-
-## 3.3 LMMs - Expossure Raw data
-
-```{r}
-exposure<-data[data$Timepoint=="Exposure", ]
-
-## model 1: LMER for both species
-  fit1<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment +
-                         Species + (1|Tank), data=exposure)
-  isSingular(fit1)
-  anova(fit1)
-  ranova(fit1)
-  summary(fit1)
-  par(mfrow=c(2,2))
-  plot(fit1)
-  par(mfrow=c(1,1))
-  #step(fit1)
-  
-## model 2: LMER for Past
-  fit_Past<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
-            data=exposure[exposure$Species=="Past",])
-  isSingular(fit_Past)
-  anova(fit_Past)
-  ranova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LMER for Ssid
-  fit_Ssid<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
-               data=exposure[exposure$Species=="Ssid",])
-  isSingular(fit_Ssid)
-  anova(fit_Ssid)
-  ranova(fit_Ssid)
-  summary(fit_Ssid)
-  plot(fit_Ssid)
-  #step(fit_Ssid)
-```
-
-## 3.4 LMMs - Recovery - log O2
-
-```{r}
-recovery<-data[data$Timepoint=="Recovery", ]
-
-## model 1: LMER for both species
-  fit1<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment +
-                         Species + (1|Tank), data=recovery)
-  isSingular(fit1)
-  anova(fit1)
-  ranova(fit1)
-  summary(fit1)
-  par(mfrow=c(2,2))
-  plot(fit1)
-  par(mfrow=c(1,1))
-  #step(fit1)
-  
-## model 2: LMER for Past
-  fit_Past<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
-            data=recovery[recovery$Species=="Past",])
-  isSingular(fit_Past)
-  anova(fit_Past)
-  ranova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LMER for Ssid
-  fit_Ssid<-lmerTest::lmer(log(FINAL.MO2..nmol.min.) ~Treatment + (1|Tank),
-               data=recovery[recovery$Species=="Ssid",])
-  isSingular(fit_Ssid)
-  anova(fit_Ssid)
-  ranova(fit_Ssid)
-  summary(fit_Ssid)
-  plot(fit_Ssid)
-  #step(fit_Ssid)
-```
-
-## 3.5 LMMs - Recovery Raw data
-
-```{r}
-recovery<-data[data$Timepoint=="Recovery", ]
-
-## model 1: LMER for both species
-  fit1<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment +
-                         Species + (1|Tank), data=recovery)
-  isSingular(fit1)
-  anova(fit1)
-  ranova(fit1)
-  summary(fit1)
-  par(mfrow=c(2,2))
-  plot(fit1)
-  par(mfrow=c(1,1))
-  #step(fit1)
-  
-## model 2: LMER for Past
-  fit_Past<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
-            data=recovery[recovery$Species=="Past",])
-  isSingular(fit_Past)
-  anova(fit_Past)
-  ranova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LMER for Ssid
-  fit_Ssid<-lmerTest::lmer(FINAL.MO2..nmol.min. ~Treatment + (1|Tank),
-               data=recovery[recovery$Species=="Ssid",])
-  isSingular(fit_Ssid)
-  anova(fit_Ssid)
-  ranova(fit_Ssid)
-  summary(fit_Ssid)
-  plot(fit_Ssid)
-  #step(fit_Ssid)
-```
-
-# 4 Models with O2 Change (Expossure-Initial)
-
-## 4.1 LMMs 
-
-```{r}
-## model 1: LMER for both species
-  fit1<-lmerTest::lmer(change ~Treatment.Exposure * 
-                         Species.Exposure + (1|Tank.Exposure), data=wide.data)
-  isSingular(fit1)
-  anova(fit1)
-  ranova(fit1)
-  summary(fit1)
-  par(mfrow=c(2,2))
-  plot(fit1)
-  par(mfrow=c(1,1))
-  #step(fit1)
-  
-## model 2: LMER for Past
-  fit_Past<-lmerTest::lmer(change ~Treatment.Exposure + (1|Tank.Exposure),
-            data=wide.data[wide.data$Species.Exposure=="Past",])
-  isSingular(fit_Past)
-  anova(fit_Past)
-  ranova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LMER for Ssid
-  fit_Ssid<-lmerTest::lmer(change ~Treatment.Exposure + (1|Tank.Exposure),
-               data=wide.data[wide.data$Species.Exposure=="Ssid",])
-  isSingular(fit_Ssid)
-  anova(fit_Ssid)
-  ranova(fit_Ssid)
-  summary(fit_Ssid)
-  plot(fit_Ssid)
-  #step(fit_Ssid)
 ```
 
 ```{r}
-# Pairwise comparisons
-  # Day specific comparisons
-  # Sw.emmc<-emmeans(fit4, ~Treatment)
-  # Sw_groups<-cld(Sw.emmc)
-  # Sw_groups
-```
-
-## 4.2 ANOVAs RAW DATA
-
-```{r}
-## model 1: LM for both species
-  fit1<-lm(change ~Treatment.Exposure * Species.Exposure,
-              data=wide.data)
- 
-  anova(fit1)
-  summary(fit1)
-  par(mfrow=c(2,2))
-  plot(fit1)
-  par(mfrow=c(1,1))
-  
-## model 2: LM for Past
-  fit_Past<-lm(change ~Treatment.Exposure,
-              data=wide.data[wide.data$Species.Exposure=="Past",])
-  anova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LM for Ssid
-  fit_Ssid<-lm(change ~Treatment.Exposure,
-              data=wide.data[wide.data$Species.Exposure=="Ssid",])
-  anova(fit_Ssid)
-  summary(fit_Ssid)
-  par(mfrow=c(2,2))
-  plot(fit_Ssid)
-  par(mfrow=c(1,1))
-  #step(fit_Ssid)
-```
-
-## 4.3 ANOVAs log data change?
-
-```{r}
-## model 1: LMER for both species
-  fit1<-lm(log(change) ~Treatment.Exposure * Species.Exposure,
-              data=wide.data)
-  anova(fit1)
-  #ranova(fit1)
-  summary(fit1)
-  par(mfrow=c(2,2))
-  plot(fit1)
-  par(mfrow=c(1,1))
-  #step(fit1)
-  
-## model 2: LMER for Past
-  fit_Past<-lm(log(change) ~Treatment.Exposure,
-              data=wide.data[wide.data$Species.Exposure=="Past",])
-  anova(fit_Past)
-  summary(fit_Past)
-  par(mfrow=c(2,2))
-  plot(fit_Past)
-  par(mfrow=c(1,1))
-  #step(fit_Past)
-  
-## model 3: LMER for Ssid
-  fit_Ssid<-lm(log(change) ~Treatment.Exposure,
-              data=wide.data[wide.data$Species.Exposure=="Ssid",])
-  anova(fit_Ssid)
-  summary(fit_Ssid)
-  par(mfrow=c(2,2))
-  plot(fit_Ssid)
-  par(mfrow=c(1,1))
-  #step(fit_Ssid)
-
-# Pairwise comparisons
-  # Day specific comparisons
-  # Sw.emmc<-emmeans(fit4, ~Treatment)
-  # Sw_groups<-cld(Sw.emmc)
-  # Sw_groups
-
+#Pairwise comparisons
+Sw.emmc<-multcomp::cld(emmeans(fit1, specs=c("Nutrients", "Disease")))
+Sw.emmc
 ```
 
 # Packages used
