@@ -237,7 +237,7 @@ ggsave(file="Outputs/TimeLine.svg", plot=TimeLine, width=4, height=6)
 # Data
     data<-read.csv("Data/Nutrients.csv", header = TRUE)
     #data<-data[data$Sample.ID<1843,]
-    summary(data)
+    #summary(data)
     
     data$N<-as.numeric(data$N)
     
@@ -254,8 +254,9 @@ ggsave(file="Outputs/TimeLine.svg", plot=TimeLine, width=4, height=6)
     #                        levels=c("1", "2"))
     
     data<-droplevels(data)
-    data$Treatment<-factor(data$Treatment, levels = c ("LN_28", "LN_31", "HN_28", "HN_31",
-                                                       "Healthy", "Disease",  "Stock", "VAT"))
+    data$Treatment<-factor(data$Treatment, 
+                           levels = c ("LN_28", "LN_31", "HN_28", "HN_31",
+                                       "Healthy", "Disease",  "Stock", "VAT"))
     data$Treatment3<-factor(paste(data$Nutrients, 
                                   data$Disease, sep = "_"))
     data<-data[data$Date!="2023-05-18", ]
@@ -457,8 +458,7 @@ NH4_day<- ggplot(Corals, aes (Day, NH4, fill=Treatment,
                                colour=Treatment,
                                shape=Beaker.conditions)) +
  
-  #geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), 
-  #alpha=1, size =1)+
+  geom_jitter(aes(colour=Treatment, shape=Beaker.conditions), alpha=1, size =1)+
   #geom_boxplot ()+
   scale_shape_manual(values=c(21, 22))+
   scale_color_manual(values=c("#2b83ba", "#d7191c", "#003399", "#660000",
@@ -478,17 +478,13 @@ NH4_day<- ggplot(Corals, aes (Day, NH4, fill=Treatment,
                       #   expand = c(0.01, 0.01),
                       name=("Day in the experiment")) +
   scale_y_continuous(limits = c(0, 60),
-                      breaks = seq(0, 20, 1),  
+                      breaks = seq(0, 60, 5),  
                       #   expand = c(0.01, 0.01),
                       name=("NH4 [umol/L]")) +
-  # geom_hline(yintercept = 4.1, linetype=2)+
-  # geom_hline(yintercept = 0.3, linetype=2)+
-  #ylim()+
   MyTheme
-  #NH4_Temp+facet_wrap(~Nutrients)
+#NH4_Temp+facet_wrap(~Nutrients)
 NH4_day+facet_grid(Disease~Nutrients)
 ```
-
 
 ```{r}
 NH4_week<- ggplot(Corals, aes(Week, NH4, fill=Treatment, colour=Treatment)) +
